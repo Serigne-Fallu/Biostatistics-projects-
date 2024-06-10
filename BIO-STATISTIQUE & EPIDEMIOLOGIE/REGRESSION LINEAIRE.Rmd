@@ -1,0 +1,121 @@
+---
+title: "REGRESSION LINEAIRE"
+author: "Serigne Fallou Mbacke NGOM"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+
+## SIGNIFICATIVITE D'UN RESULTAT DE TEST, COURBE DE ROCK:
+ **Model regression:  y = ax**
+On fait le test statistique pour voir la relation entre les variables:
+a != 0 & P<0.05 donc la valeur de a n'est pas null donc a determine la relation entre les variables y et x.
+b etant constant donc sa valeur n'influt pas trop sur la relaion.
+
+On transforme 0/1 des variables qualitatif en valeurs comprisent entre 0 et 1. 
+On fait la prediction puis on fixe notre **valeur seuil** qui va permettre d'interpretation nos resultat (classer les individus): courbe de Rock qui va permttre de voir la meilleure valeure seuil (sensibilite et specificite).
+
+PS: **Courbe de ROck => Sensibilite = f(1-specificite)**; Plus l'aire de la courbe est proche de 1, plus la prediction est bonne, plus le model est **predictif**. 
+
+- Sensibilite = VP(model ou test)/total Maladie(reel)
+- Specificite = VN(model ou test)/total Malades(reel)
+- Accurency (% de bien classer) = (VP+VN)/total individu
+- PPV = VP(model)/total positif (model ou test)
+- PPN = VN(model)/total negatif(model ou test)
+
+## EXEMPLE DE CAS PRATIQUE:
+### IMPORTATION ET VISUALISATION DONNEES:
+```{r}
+data = read.csv2('C:/DIC GBB/DIC2 GBB/BIO-STATISTIQUE & EPIDEMIOLOGIE/data_reglog.csv')
+head(data)
+names(data) = c("Age", "Maladie")
+summary(data)
+dim(data)
+plot(data$Age, data$Maladie,pch=15, xlab='Age', ylab="Maladie")
+
+```
+
+### MODELISATION :
+On utilise la fonction **glm** pour voir la relation entre les deux variables et faire une modelisation:
+```{r}
+myreg = glm(data$Maladie ~ data$Age, data = data, family = binomial(link = logit))
+summary(myreg)
+```
+INTERORETATION: 
+-Pour l'age: **a = -0.1156** et P-value<0.05 donc la valeur n'est pas nulle => existe une relation entre les 2 variables qui est dependante de a. 
+**b =  5.9462**
+
+
+Nous allons utiliser la formule **logit_ypredict = ax + b** pour faire des predictioins de y a partir de x.
+```{r}
+logit_ypredict = -0.1156*data$Age +  5.9462
+
+ypredict = exp(logit_ypredict)/(1 + exp(logit_ypredict))
+
+plot(data$Age, data$Maladie,pch=15, xlab='Age', ylab="Maladie")
+points(data$Age, ypredict, col="red", pch=15)
+```
+
+
+Pour la prediction, on peut directetment utiliser la fonction **predict()**
+```{r}
+predicted1 = predict(myreg, data, type = "response")
+library(pROC)
+roc(data$Maladie ~ predicted1, plot=TRUE, print.auc=TRUE)
+
+```
+La courbe ROC nous permet de voir les valeurs seuils avec les sensibilites et les specificites pour les possibilite.
+
+
+### TABLEAU DE COMPARAISON ENTRE LES VRAIES VALEURS ET CELLES PREDITES:
+On peut aussi voir la difference entre les valeurs predites et la realite dans un tableau:
+```{r}
+tab_Comparaison = data.frame(data$Maladie , predicted1)
+tab_Comparaison
+```
+
+```{r}
+library(auRoc)
+library(rjags)
+auRoc(data$Maladie ~ predicted1, plot=TRUE, print.auc=TRUE)
+
+```
+
+### CALCULE DES COEFFICIENTS DU MODELE DE PREDICTION:
+```{r}
+#install.packages("ROCR")
+library(ROCR)
+pred1 = prediction(predicted1, data$Maladie)
+perf1 = performance(pred1, "sens", "spec")
+acc = performance(pred1, "acc")
+W = data.frame(perf1@alpha.values, perf1@y.values, perf1@x.values, acc@y.values)
+colnames(W) = c('Cutpoint', 'Sensibilite', 'Specificite',"Correct_classified(%)" )
+print(W)
+```
+
+
+Calculons OR = exp(coef_corr)
+```{r}
+summary(myreg)
+exp(coef(myreg))
+```
+
+INTERPRETATION:
+a = -0.XXX et P-value<0.05 or y = ax donc x(age) est un facteur protecteur contre y(maladie => signe - donc evolution des 2 variables avec des sens inverses.
+
+(Intercept)    data$Age 
+382.3009695 **0.8908495(OR)** =>Age est un facteur protecteur  => une augmentation d'une annee provoque la diminution de la chance de tomber malade de 0.9 
+
+PS: **AIC: 43.617** 
+AIC => Critere d'information. Plus AIC est faible, plus le modele est bon.
+
+PS:
+-Variable quantitative => On parle **"augmentation d'une unite (ex: une annee)"** ; 
+-Variable qualitative => on compare les modalites: d'abord on regarde le signe de chaque modalite (F/M) pour voir le sens d'evolution par rapport au facteur a predire puis on fait exp(coef(myreg))=OR pour quantifier (les F ont n fois plus de sens de tomber malade que les M ).
+
+**NB: LA METHODE LOGISTIC LINEAIRE SIMPLE/MULTIPLE est plus efficace pour les conditions ou on a plusieurs individues avec peu de variables.**
+
+
+
+
+

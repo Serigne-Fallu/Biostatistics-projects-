@@ -1,0 +1,90 @@
+---
+title: "Analyse Correspondance Multiple"
+author: "Serigne Fallou Mbacke NGOM"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+ACM permet de visualiser et d'analyser plusieurs variables qualitatives.
+
+
+```{r}
+library('FactoMineR')
+library('factoextra')
+data("poison")
+head(poison)
+```
+Poison est une base de donnees contenant des aliments provenants d'une ecole ou on a une TIAC et on essaye de voir l'aliment responsable (_y=yes ; _n=no).
+
+
+```{r}
+poison_symptomes = poison[, 5:9]
+summary(poison_symptomes)
+
+```
+
+Resume des symptomes.
+
+
+
+```{r}
+poison_aliments = poison[, 10:15]
+summary(poison_aliments)
+```
+Resume des aliments que les etudiants ont consommees.
+
+
+
+```{r}
+poison_sympt_aliments = poison[, 5:15]
+ for(i in 1:ncol(poison_sympt_aliments)){
+   par(ask=TRUE) 
+   plot(poison_sympt_aliments[,i])}
+```
+Base de donnees avec les symtomes et les aliments sans les informations personnelles (age, sexe, ...). 
+C'est la base de travael ou base pour realiser l'analyse ACM.
+
+
+
+```{r}
+res= MCA(poison_sympt_aliments, graph = FALSE)
+res
+```
+ACM de la base avec chauque variables correspond a une dimension et on va construire des axes avec la participation des variables/dimensions. Chaque axe correspond a un correspondant. 
+
+
+
+```{r}
+res$eig
+```
+
+
+
+```{r}
+fviz_mca_biplot(res, repel = TRUE, ggtheme=theme_minimal())
+```
+Le graphe montre la correlation entre les symptomes et la consommation d'aliments.
+Il faudra anslyser en terme de 'manger aliment x' et 'presenter symptome y' dans l'optique de voir les aliments qui pourraient avoir directe avec les symptomes du TIAC.
+
+
+
+```{r}
+fviz_mca_biplot(res, col.var='cos2', gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"),repel = TRUE, ggtheme=theme_minimal())
+```
+Meilleure representation de la correlation entre les symptomes et les aliments consommees par les individus.
+PLus le cos2 est grand, plus la representation sur le plan correspond a la realite.
+- Diarrhea_y, fever_y, abdo_y sont tres proche dans la realite
+- Par contre la representation de fich_y n'est pas aussi proche de la realite. 
+- Tous ceux qui ont la fievre, abdo, Diarrhea ont manges cheese et Mayo (cheese_y, Mayo_y)
+- Donc on peut formuler l'hypothese selon laquelle: le fait de manger des formages ou de la mayonaise serait a l'origine du TIAC.
+
+
+.
+```{r}
+fviz_mca_ind(res, label = 'all', habillage= 'Diarrhae', palette=c('red', 'green'), addEllipses=TRUE, ellipse.type='confidence', ggtheme=theme_minimal())
+```
+Ce graphe montre la repartion des individues solon qu'ils presentent Dirrhae ou non: C'est la reprentation en fonction d'un seul symptome (Diarrhae). 
+NB: On peut faire la meme representation en utilisant d'autres variables.
+
+
+

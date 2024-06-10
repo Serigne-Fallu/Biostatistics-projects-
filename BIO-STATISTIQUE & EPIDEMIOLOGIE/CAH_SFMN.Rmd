@@ -1,0 +1,65 @@
+---
+title: "Classification Ascendante Hierarchique"
+author: "Serigne Fallou Mbacke NGOM"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+Classification Ascendante Hierarchique(CAH) est une methode **classification supervisee** qui s'applique que sur des **variables quantitatives**.
+
+
+
+```{r}
+library(FactoMineR)
+library(factoextra)
+data("USArrests")
+head(USArrests)
+```
+ 
+ 
+ 
+```{r}
+acp = PCA(USArrests, graph = FALSE)
+res = HCPC(acp, nb.clust = 0, graph = FALSE)
+plot(res, choice = "tree")
+plot(res, choice = "3D.map")
+```
+ On a quatre(4) groupes ou **clusters** qui regroupent les individus identiques.
+ 
+ 
+ 
+```{r}
+fviz_dend(res, cex=0.7, palette = "jco", rect = TRUE, rect_fill = TRUE, rect_border = 'jco', labels_track_height = 0.8)
+```
+On a le graphe **tree** plus claire et explicite des differents clusters. 
+
+
+
+```{r}
+fviz_cluster(res, show.clust.cent = TRUE, palette = "jco", ggtheme = theme_minimal(), main="Factor map")
+```
+ Ici, on a le graphe **map** des clusters avec l'element central de chque cluter.
+ 
+ 
+ 
+```{r}
+head(res$data.clust, 10)
+```
+ On a les resultats de la classification des individus avec les numeros de clusters sous forme de tableau.
+ 
+ 
+ 
+```{r}
+res$desc.ind$para
+```
+Pour chaque clusters, on a **les elements** avec leurs **contributions (valeurs)** respectives. 
+
+
+
+```{r}
+library(cluster)
+classif <- agnes(scale(USArrests),method="ward")
+plot(classif,xlab="Individu",which.plot=2,main="Dendrogramme")
+```
+
+ 

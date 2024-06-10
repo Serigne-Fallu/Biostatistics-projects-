@@ -1,0 +1,99 @@
+---
+title: "k-means_SFMN"
+author: "Serigne Fallou Mbacke NGOM"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+k-means est une methode de **classification non-supervisee** qui s'applique sur des **variables quantitatives** et **on choisit le nombre de clusters**.
+
+
+
+```{r}
+library(factoextra)
+data("iris")
+head(iris)
+```
+```{r}
+summary(iris)
+unique(iris$Species)
+```
+La base de donnees **iris** regroupe trois(3) speces de fleurs de genre iris.
+
+
+
+```{r}
+iris_sans_sp = iris[, 1:4]
+result = kmeans(iris_sans_sp, 3)
+result$size
+result$cluster
+
+```
+Nous avons recupere les variables qui vont nous permettre de faire la classification de nos individus en clusters par la methode k-means.
+Nous avons 3 clusters: cluster1 = 50 ind ; clusters2 = 38 ind ; clueter3 = 62 ind.
+
+
+
+**NB: Il faut savoir le nombre de clusters avant d'utiliser k-means. On peut passer par l'ACP pour avoir une  idee sur le nombre de groupes/clusters.**
+On peut etuliser une fonction pour determiner le nombre optimal de clusters
+```{r}
+my_data = scale(iris_sans_sp)
+fviz_nbclust(my_data, kmeans, method = "gap_stat" )
+```
+Nombre optimal de clusters est egale a 3. 
+
+
+
+```{r}
+table(iris$Species, result$cluster)
+```
+Comparaison des donnees reelles avec nos resultats de classification. Cela permet de voir est-ce l'algorithme regroupe des individus identiques dans le meme cluster.
+
+
+
+**NB: On peut cracteriser les clusters en fonction des CLUSTERS**
+```{r}
+iris.comp <- cbind.data.frame(iris_sans_sp,result=factor(result$cluster))   # creer tableaua avec les num clusters
+library(FactoMineR)
+catdes(iris.comp, num.var = 5)
+```
+Ce qui caractérise le plus les individus de la classe 1 est le fait qu’ils sautent moins
+haut à la perche que les autres (valeur-test inférieure à −2) et qu’ils courent vite
+le 1 500 m (ils ont un temps plus faible que les autres). Les individus de la classe
+4 sautent haut à la perche. Pour les individus de cette classe, la hauteur moyenne
+est de 5.05 m contre 4.76 m pour l’ensemble des individus (y compris ceux de
+la classe 4). Une valeur-test supérieure à 2 en valeur absolue signifie ici que la
+moyenne de la classe est significativement différente de la moyenne générale : un
+signe positif (resp. négatif) de la valeur-test indique que la moyenne de la classe
+est supérieure (resp. inférieure) à la moyenne générale.
+
+
+```{r}
+name = iris[, "Species"]
+color = ifelse(result$cluster==1, "green", ifelse(result$cluster==2, "red", "blue"))
+dd = data.frame(color, name)
+plot(iris_sans_sp[, c(1,2)], col=color, pch=16)
+legend("topleft", legend=dd$name, col=c("green", "red", "blue")[dd$cluster], pch=16, bty="n", cex=0.7)
+```
+Visualisation des clusters avec des codes couleurs en fonction de 2 premieres variables (1, 2).
+
+
+
+```{r}
+name = iris[, "Species"]
+color = ifelse(result$cluster==1, "green", ifelse(result$cluster==2, "red", "blue"))
+dd = data.frame(color, name)
+plot(iris_sans_sp[, c(3,4)], col=color, pch=16)
+```
+Changement de variables (3, 4) pour la representation des clusters. On constate qu'avec ces 2 variables on a une meilleure distonction des clusters ou groupes.
+
+Interpretation: quelque soit les variables choisies, il existe deux(2) groupes d'individu qui sont tres proches et l'autre groupe est decale.
+
+La longeur et la largeur des pethals permet de classifier les individus dans les differentes especes. Mais on a des zones de d'interaction entre des especes donc on sera obliger d'utiliser **l'arbre de decision** pour faire la differatiation et une meilleure classification.
+
+**Les arbres de decision permettent de prendre des decisions sur la meilleire maniere de classer les individus en fonction des variables et plus simplement.**
+
+```{r}
+head(dd, 20)
+```
+
