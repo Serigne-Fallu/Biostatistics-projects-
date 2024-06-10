@@ -1,0 +1,168 @@
+---
+title: "DEEP LEARNING:Analyse d'images médicales pour la détection de tumeur du cerveau"
+author: "Serigne Fallou MBacke NGOM"
+date: "2023-12-09"
+output: html_document
+---
+
+```{r, include=FALSE}
+library(reticulate)
+use_virtualenv( "my-python", required = TRUE)
+```
+
+```{python}
+import matplotlib.pyplot as plt
+import numpy as np
+import PIL
+import tensorflow as tf
+```
+
+```{python}
+import os
+from pathlib import Path
+```
+
+
+### EXPLORATION DES DONNEES:
+```{python}
+data_dir = Path("DEEP LEARIN/content/images")
+normals = list(data_dir.glob("no/*"))
+tumeurs = list(data_dir.glob("yes/*"))
+print(
+    f"{len(tumeurs)} images de patients atteints de tumeur et "
+    f"{len(normals)} images de patients étant sain."
+)
+```
+
+```{python}
+# Un patient sain.
+PIL.Image.open(str(normals[1]))
+```
+```{python}
+# Un patient atteint de tumeur.
+PIL.Image.open(str(tumeurs[1]))
+```
+
+### PREPARATION DES DONNEES:
+```{python}
+batch_size = 32
+img_height = 256
+img_width = 256
+```
+
+```{python}
+train_ds, val_ds = tf.keras.utils.image_dataset_from_directory(
+    data_dir,
+    validation_split=0.2,
+    subset="both",
+    seed=123,
+    image_size=(img_height, img_width),
+    batch_size=batch_size
+)
+```
+
+
+### CREATION DES RESEUAX DE NEURONES:
+```{python}
+# Augmentations des données.
+data_augmentation = tf.keras.Sequential(
+    [
+        tf.keras.layers.RandomFlip("horizontal"),
+        tf.keras.layers.RandomZoom(0.1),
+    ]
+)
+```
+
+```{python}
+model = tf.keras.models.Sequential(
+    [
+        # Mettre à l'échelle les valeurs d'entrée (qui vont de 0 à 255)
+        # pour qu'elles soient comprises dans l'intervalle [0, 1].
+        tf.keras.layers.Rescaling(
+            1./255, input_shape=(img_height, img_width, 3)
+        ),
+        # Données augmentées.
+        data_augmentation,
+        # Couche de convolution.
+        tf.keras.layers.Conv2D(16, 3, padding="same", activation='relu'),
+        # Couche de pooling.
+        tf.keras.layers.MaxPooling2D(),
+        # Couche de convolution.
+        tf.keras.layers.Conv2D(32, 3, padding="same", activation='relu'),
+        # Couche de pooling.
+        tf.keras.layers.MaxPooling2D(),
+        # Couche de convolution.
+        tf.keras.layers.Conv2D(64, 3, padding="same", activation='relu'),
+        # Couche de pooling.
+        tf.keras.layers.MaxPooling2D(),
+        # Aplatir les valeurs d'entrée.
+        tf.keras.layers.Flatten(),
+        # Couche dense.
+        tf.keras.layers.Dense(256, activation="relu"),
+        # Couche de dropout.
+        tf.keras.layers.Dropout(0.2),
+        # Couche dense.
+        # Un seul neurone car il s'agit d'une classification binaire.
+        tf.keras.layers.Dense(1)
+    ]
+)
+```
+
+```{python}
+my_callbacks = [
+    tf.keras.callbacks.EarlyStopping(patience=5),
+    tf.keras.callbacks.ModelCheckpoint(
+        filepath="best_weights.weights.h5",  # Modifiez le nom du fichier ici
+        save_best_only=True,
+        save_weights_only=True
+    )
+]
+
+```
+
+```{python}
+model.compile(
+    optimizer=tf.keras.optimizers.Adam(),
+    loss=tf.keras.losses.BinaryCrossentropy(from_logits=True),
+    metrics=["accuracy"],
+)
+model.summary()
+```
+
+
+### ENTRAINNEMENT NEURONES SUR 50 pockets:
+```{python}
+epochs = 50
+history = model.fit(
+    train_ds,
+    validation_data=val_ds,
+    epochs=epochs,
+    callbacks=my_callbacks,
+    verbose=2
+)
+```
+
+### VISALISATION PERFORMANCES ALGORITHME
+```{python}
+acc = history.history["accuracy"]
+val_acc = history.history["val_accuracy"]
+
+loss = history.history["loss"]
+val_loss = history.history["val_loss"]
+
+epochs_range = range(len(loss))
+plt.figure(figsize=(8, 8))
+plt.subplot(1, 2, 1)
+plt.plot(epochs_range, acc, label="Training Accuracy")
+plt.plot(epochs_range, val_acc, label="Validation Accuracy")
+plt.legend(loc="lower right")
+plt.title("Training and Validation Accuracy")
+
+plt.subplot(1, 2, 2)
+plt.plot(epochs_range, loss, label="Training Loss")
+plt.plot(epochs_range, val_loss, label="Validation Loss")
+plt.legend(loc="upper right")
+plt.title("Training and Validation Loss")
+plt.show()
+```
+

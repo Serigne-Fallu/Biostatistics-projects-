@@ -1,0 +1,99 @@
+---
+title: 'ANALYSE TEXTE: identifier les comportements d’achats fréquents parmi les clients'
+author: "Serigne Fallou MBacke NGOM"
+date: "2023-12-14"
+output: html_document
+---
+
+Les techniques d’analyse de liens entre valeurs des variables seront mises en œuvre sur des données de transactions de ventes correspondant à des paniers d’achats dans le commerce de détail.
+
+L’objectif final de cette application est d’identifier les comportements d’achats fréquents parmi les clients, c’est-à-dire les articles fréquemment achetés ensembles.
+
+### CHARGEMENT ET VISUALISATION DES DONNEES GROCERIES 
+L'ensemble de données Data Groceries contient 9 836 tickets de transactions de ventes de détail. Cet ensemble représenté sous forme d'une matrice binaire, décrit pour chaque transaction la liste des articles achetés ensemble.
+```{r}
+groceries <- read.table("ANALYSE DE TEXTE/Data Groceries.csv", header=TRUE, dec=".", sep="\t", stringsAsFactors=T)
+ncol(groceries)
+colnames(groceries)
+```
+```{r}
+library(arules)
+
+# Représentation des données au format transactionnel
+groceries_tr <- as(groceries, "transactions")
+summary(groceries_tr)
+
+# Histogramme d'effectifs des 20 items les plus fréquents
+itemFrequencyPlot(groceries_tr, topN=20)
+itemFrequencyPlot(groceries_tr, topN=20,type="absolute")
+itemFrequencyPlot(groceries_tr, support=0.10)
+
+# Affichage des nombres réels avec 3 décimales
+options(digits=3)
+
+```
+
+### EXTRACTION DE REGLES D'ASSOCIATION 
+Nous souhaitons extraire les règles d'association les plus pertinentes montrant les liens entre les achats de deux articles.
+```{r}
+# Extraction des règles d'association pour minsupport = 1% et minconfiance = 40%
+rules1 <- apriori(groceries, parameter = list(supp = 0.01, conf = 0.4, target = "rules"))
+inspect(rules1)
+
+# Ordonnancement des règles par mesures de confiance et support respectivement
+rules1 <- sort(rules1, by = c("confidence", "support"))
+inspect(rules1)
+
+# Règles d'association de taille maximale de 2 items pour minsupport = 1% et minconfiance = 40%
+rules2 <- apriori(groceries, parameter = list(supp = 0.01, conf = 0.4, target = "rules", maxlen=2))
+inspect(rules2)
+
+# Règles d'association de taille maximale de 2 items pour minsupport = 0,1% et minconfiance = 50%
+rules3 <- apriori(groceries, parameter = list(supp = 0.001, conf = 0.5, target = "rules", maxlen=2))
+rules3 <- sort(rules3, by=c("confidence", "support"))
+inspect(rules3)
+```
+
+
+```{r}
+# Ciblage de l'item 'Whole.milk=Y' en antécédent des règles
+wm1 <- apriori(data=groceries, parameter=list(supp=0.01, conf=0.2), appearance=list(lhs="Whole.milk=Y"), control=list(verbose=F))
+wm1 <- sort(wm1, by = c("confidence", "support"))
+inspect(wm1)
+
+# Ciblage de l'item 'Whole.milk=Y' en conséquence des règles
+wm2 <- apriori(data=groceries, parameter=list(supp=0.01, conf=0.55), appearance=list(rhs="Whole.milk=Y"), control=list(verbose=F))
+wm2 <- sort(wm2, by = c("confidence", "support"))
+inspect(wm2)
+
+```
+• lhs est l'itemset antécédent de la règle,
+• rhs est l’itemset conséquence de la règle,
+• support est la proportion d'instances contenant lhs et rhs,
+• confidence est la proportion d'instances contenant rhs parmi celles contenant lhs,
+• coverage est la proportion d'instances contenant lhs,
+• lift mesure la corrélation statistique entre lhs et rhs : lift(lhs → rhs) = P(lhs  rhs) / (P(lhs).P(rhs)).
+
+
+### AFFICHAGES GRAPHIQUES DE REGLES D'ASSOCIATION 
+```{r}
+library(arulesViz)
+
+# Affichage des règles de 'wm1' sous forme de graphe
+plot(wm1, method="graph", shading="confidence")
+
+# Affichage des règles de 'wm2' sous forme de graphe interactif avec le moteur plotly
+plot(wm2, method="graph", shading="confidence", engine='igraph')
+
+# Affichage des règles de 'wm2' sous forme de boulier
+plot(wm2, method="grouped", shading="confidence", engine='ggplot2')
+
+```
+
+Ces représentations permettent d’explorer de grands ensembles de règles de façon simplifiée.
+
+
+
+
+
+
